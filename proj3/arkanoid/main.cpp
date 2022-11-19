@@ -327,7 +327,8 @@ public:
    }
 
    // 아래 방향 벽과 충돌 감지
-   bool hasDownIntersected(CSphere* sphere, CSphere* check) {
+   bool hasDownIntersected(CSphere* sphere, CSphere* check, CSphere* check1, CSphere*check2,
+    CSphere* check3, CSphere* check4, CSphere* check5) {
       if (sphere->center_y - radius_sphere <= -1 * planeHeight / 2)
       {
           Life -= 1; //아래 벽과 닿으면 Life가 깎임
@@ -341,6 +342,12 @@ public:
           sphere->dir_z = 0.0;
 
           check->setCenter(check_init_x , check_init_y, 0.0); //하얀공
+          check1->setCenter(check_init_x+0.5 , check_init_y, 0.0); //하얀공
+          check2->setCenter(check_init_x+1.0, check_init_y, 0.0); //하얀공
+          check3->setCenter(check_init_x-0.5, check_init_y, 0.0); //하얀공
+          check4->setCenter(check_init_x-1, check_init_y, 0.0); //하얀공
+          check5->setCenter(check_init_x+1.5, check_init_y, 0.0); //하얀공
+
           return (true);
       }
       return (false);
@@ -362,8 +369,8 @@ public:
    }
 
 
-   void hitBy(CSphere* sphere, CSphere* check)
-   {
+   void hitBy(CSphere* sphere, CSphere* check, CSphere* check1, CSphere* check2, CSphere* check3,
+   CSphere* check4, CSphere* check5){
       if (hasUpIntersected(sphere))
       {
          sphere->dir_y = -(sphere->dir_y);
@@ -374,12 +381,12 @@ public:
             sphere->center_y -= 0.1;
          }
       }
-      else if (hasDownIntersected(sphere, check)) {
+      else if (hasDownIntersected(sphere, check,check1,check2,check3,check4,check5)) {
          sphere->dir_y = -(sphere->dir_y);
 
          // 구와 벽끼리 충돌시 끼임 문제 해결 부분
          // 구와 벽이 부딪혀서 구의 방향이 바뀌었는데 끼어있으면, 반사 방향으로 x 성분과 y 성분의 위치를 끼임이 해결될 때까지 0.1씩 바꾼다.
-         while (hasDownIntersected(sphere, check)) {
+         while (hasDownIntersected(sphere, check,check1,check2,check3,check4,check5)) {
             sphere->center_y += 0.1;
 
          }
@@ -408,8 +415,19 @@ public:
       }
    }
 };
-
-CSphere check,hit_sphere; // 조작하는 흰 구, 반사되는 빨간구
+class bar:public CSphere{
+   public:
+      void draw(){
+      glLoadIdentity(); //단위행렬로 초기화
+      glTranslatef(0.0, 0.0, -sdepth); //+Z방향이 화면에서 우리가 보는방향이므로 -를하면 축소되는 효과, wall과 위상을 맞추기위해 사용한듯
+      glMultMatrixd(m_mRotate); // 마우스 이동에따라 motion콜백함수에서 m_mrotate행렬이 변형되는데 이 mult함수로 단위행렬에 곱하여 m_mrotate대로 회전한다.
+      glTranslated(center_x, center_y, center_z); // 중앙으로 이동한다.
+      glColor3f(color_r, color_g, color_b); //색 조정
+      glutSolidCube(1); //radius_sphere의 반지름 나머지 두 인자는 구를 나타내는 경선과 위선
+      }
+};
+bar check, check1, check2,check3,check4,check5;
+CSphere hit_sphere; // 조작하는 흰 구, 반사되는 빨간구
 CSphere target_sphere[NO_SPHERE]; // 맞춰야 하는 타겟 파란 공의 개수 최대 NO_SPHERE 개수만큼 존재
 CWall g_wall(planeWidth, planeHeight, planeDepth); // 바닥 평면
 CWall boundary_wall[4]; // 가장자리 벽
@@ -421,6 +439,13 @@ void InitObjects()
     // specify initial colors and center positions of each spheres
     hit_sphere.setColor(0.8, 0.2, 0.2); hit_sphere.setCenter(hit_sphere_init_x, hit_sphere_init_y, 0.0); //빨간공
     check.setColor(0.8, 0.8, 0.8); check.setCenter(check_init_x, check_init_y, 0.0); //하얀공
+    check1.setColor(0.8, 0.8, 0.8); check1.setCenter(check_init_x+0.5, check_init_y, 0.0); //하얀공
+    check2.setColor(0.8, 0.8, 0.8); check2.setCenter(check_init_x+1, check_init_y, 0.0); //하얀공
+    check3.setColor(0.8, 0.8, 0.8); check3.setCenter(check_init_x-0.5, check_init_y, 0.0); //하얀공
+    check4.setColor(0.8, 0.8, 0.8); check4.setCenter(check_init_x+1.5, check_init_y, 0.0); //하얀공
+    check5.setColor(0.8, 0.8, 0.8); check5.setCenter(check_init_x-1, check_init_y, 0.0); //하얀공
+
+
 
     // 파란색 target_sphere 구 배치
     cnt_placed_sphere = 0;
@@ -505,8 +530,13 @@ void DisplayCallback(void)
            target_sphere[i].draw(); //공 그리기
 
    }
-   check.draw();
    check.draw(); // 하얀 구 묶음 그리기
+   check1.draw();
+   check2.draw();
+   check3.draw();
+   check4.draw();
+   check5.draw();
+
    hit_sphere.draw(); // 빨간 구 그리기
    g_wall.draw(); // 벽 그리기
    for (int i = 0; i < 4; i++) if(i != 1) boundary_wall[i].draw(); // 아래 벽 제외하고 boundary_wall 그리기
@@ -514,12 +544,12 @@ void DisplayCallback(void)
    renderBitmapCharacter(35, 13.0, -2, GLUT_BITMAP_HELVETICA_18, (char*)((("LIFE : ") + to_string(Life)).c_str()));
     renderBitmapCharacter(35, 11.0, -2, GLUT_BITMAP_HELVETICA_18, (char*)((("PLAYER ") + to_string(Player)).c_str()));
     if (statecode==GAME_START||statecode==LIFE_DECREASE) {
-        renderBitmapCharacter(11, -6.5, 10, GLUT_BITMAP_HELVETICA_18, (char*)"PRESS F TO PLAY ARKANOID");
+        renderBitmapCharacter(11, -6.5, 10, GLUT_BITMAP_HELVETICA_18, (char*)"PRESS ENTER TO PLAY ARKANOID");
     }
 
    if (Life == 0) { //Life가 0이되면 gameover
-       renderBitmapCharacter(11, -6.5, 5, GLUT_BITMAP_HELVETICA_18, (char*)"GAME OVER");
-       renderBitmapCharacter(11, -7.5, 5, GLUT_BITMAP_HELVETICA_18, (char*)"PRESS R TO PLAY AGAIN");
+       renderBitmapCharacter(12.8, -6.5, 5, GLUT_BITMAP_HELVETICA_18, (char*)"!!!!GAME OVER!!!!");
+       renderBitmapCharacter(11.7, -7.5, 5, GLUT_BITMAP_HELVETICA_18, (char*)"PRESS R TO PLAY AGAIN");
        statecode = GAME_OVER;
 
    }
@@ -563,7 +593,7 @@ void KeyboardCallback(unsigned char ch, int x, int y)
     }
 
 
-    case 'f': {//엔터로 바꾸어야 함.
+    case 13 : {//엔터로 바꾸어야 함.
 
         switch (statecode) {
         case GAME_START: {
@@ -639,7 +669,12 @@ void initRotate() { // 구현이 살짝 다름 initGL에서 호출
    }
    hit_sphere.init();
    check.init();
-   check.init();
+   check1.init();
+   check2.init();
+   check3.init();
+   check4.init();
+   check5.init();
+
    g_wall.init();
    for (int i = 0; i < 4; i++) boundary_wall[i].init();
 
@@ -652,7 +687,7 @@ void InitGL() {
    glutCreateWindow("ARKANOID"); // Displaymode에서 설정한 버퍼대로 창을 띄워라
    glEnable(GL_DEPTH_TEST);
    glDepthFunc(GL_LEQUAL);
-   glClearColor(0, 0, 0, 50);
+   glClearColor(0, 0, 255, 50);
    glPolygonOffset(1.0, 1.0);
    glDisable(GL_CULL_FACE);
    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
@@ -706,10 +741,23 @@ void renderScene() // 구현 다름, 어플리케이션의 휴면시간에 호�
        {
            hit_sphere.setCenter(hit_sphere.center_x -timeDelta*0.05, hit_sphere.center_y, 0);
            check.setCenter(check.center_x -timeDelta*0.05, check.center_y, 0);
+           check1.setCenter(check1.center_x -timeDelta*0.05, check1.center_y, 0);
+           check2.setCenter(check2.center_x -timeDelta*0.05, check2.center_y, 0);
+           check3.setCenter(check3.center_x -timeDelta*0.05, check3.center_y, 0);
+           check4.setCenter(check4.center_x -timeDelta*0.05, check4.center_y, 0);
+           check5.setCenter(check5.center_x -timeDelta*0.05, check5.center_y, 0);
+
+
        }
        else //다른 단계에서는 하얀공만 움직임
        {
            check.setCenter(check.center_x - timeDelta*0.05, check.center_y, 0);
+           check1.setCenter(check1.center_x - timeDelta*0.05, check1.center_y, 0);
+           check2.setCenter(check2.center_x - timeDelta*0.05, check2.center_y, 0);
+           check3.setCenter(check3.center_x - timeDelta*0.05, check3.center_y, 0);
+           check4.setCenter(check4.center_x - timeDelta*0.05, check4.center_y, 0);
+           check5.setCenter(check5.center_x - timeDelta*0.05, check5.center_y, 0);
+
        }
        
    }
@@ -720,10 +768,23 @@ void renderScene() // 구현 다름, 어플리케이션의 휴면시간에 호�
        {
            hit_sphere.setCenter(hit_sphere.center_x + timeDelta*0.05, hit_sphere.center_y, 0);
            check.setCenter(check.center_x + timeDelta*0.05, check.center_y, 0);
+           check1.setCenter(check1.center_x + timeDelta*0.05, check1.center_y, 0);
+           check2.setCenter(check2.center_x + timeDelta*0.05, check2.center_y, 0);
+           check3.setCenter(check3.center_x + timeDelta*0.05, check3.center_y, 0);
+           check4.setCenter(check4.center_x + timeDelta*0.05, check4.center_y, 0);
+           check5.setCenter(check5.center_x + timeDelta*0.05, check5.center_y, 0);
+
        }
        else //다른 단계에서는 하얀공만 움직임
        {
            check.setCenter(check.center_x + timeDelta*0.05, check.center_y, 0);
+           check1.setCenter(check1.center_x + timeDelta*0.05, check1.center_y, 0);
+           check2.setCenter(check2.center_x + timeDelta*0.05, check2.center_y, 0);
+           check3.setCenter(check3.center_x + timeDelta*0.05, check3.center_y, 0);
+           check4.setCenter(check4.center_x + timeDelta*0.05, check4.center_y, 0);
+           check5.setCenter(check5.center_x + timeDelta*0.05, check5.center_y, 0);
+
+
        }
        
    }
@@ -735,9 +796,9 @@ void renderScene() // 구현 다름, 어플리케이션의 휴면시간에 호�
          z = hit_sphere.center_z;
 
          hit_sphere.setCenter(
-             x + timeDelta * 0.008 * hit_sphere.dir_x, // 속도의 성분이 1일때, 구는 timeDelta 당 0.002만큼 움직인다.
-             y + timeDelta * 0.008 * hit_sphere.dir_y,
-             z + timeDelta * 0.008 * hit_sphere.dir_z);
+             x + timeDelta * 0.010 * hit_sphere.dir_x, // 속도의 성분이 1일때, 구는 timeDelta 당 0.002만큼 움직인다.
+             y + timeDelta * 0.010 * hit_sphere.dir_y,
+             z + timeDelta * 0.010 * hit_sphere.dir_z);
      }
    glutPostRedisplay(); // 윈도우를 다시그리도록 요청, 바로 디스플레이콜백함수(renderscene)가 호출되진 않고 메인루프(아마 glutMainloop?)에서 호출시점을 결정한다. 이게 없으면 연결이 부자연스러움
 
@@ -747,6 +808,27 @@ void renderScene() // 구현 다름, 어플리케이션의 휴면시간에 호�
     {
         hit_sphere.hitBy(check);
     }
+   if (hit_sphere.hasIntersected(check1) == true) // hit_sphere인 빨간공과 check인 흰공과의 충돌 감지
+    {
+        hit_sphere.hitBy(check1);
+    }
+   if (hit_sphere.hasIntersected(check2) == true) // hit_sphere인 빨간공과 check인 흰공과의 충돌 감지
+    {
+        hit_sphere.hitBy(check2);
+    }
+   if (hit_sphere.hasIntersected(check3) == true) // hit_sphere인 빨간공과 check인 흰공과의 충돌 감지
+    {
+        hit_sphere.hitBy(check3);
+    }
+   if (hit_sphere.hasIntersected(check4) == true) // hit_sphere인 빨간공과 check인 흰공과의 충돌 감지
+    {
+        hit_sphere.hitBy(check4);
+    }
+   if (hit_sphere.hasIntersected(check4) == true) // hit_sphere인 빨간공과 check인 흰공과의 충돌 감지
+    {
+        hit_sphere.hitBy(check5);
+    }
+
     
     for(int i = 0; i < cnt_placed_sphere; i++){
         if (hit_sphere.hasIntersected(target_sphere[i]) == true) // hit_sphere인 빨간공과 target_sphere[]인 파란공들과의 충돌 감지
@@ -758,10 +840,12 @@ void renderScene() // 구현 다름, 어플리케이션의 휴면시간에 호�
             break;
         }
     }
+    
 
    // 벽에 대한 반사 실행, 다른 사람 코드 그대로 가져옴
-    g_wall.hitBy(&hit_sphere, &check);
-    g_wall.hitBy(&check, &check);
+    g_wall.hitBy(&hit_sphere, &check,&check1,&check2,&check3,&check4,&check5);
+
+
     
     for(int i = 0; i < cnt_placed_sphere; i++){
         if(g_wall.hasLeftIntersected(&target_sphere[i]) || g_wall.hasRightIntersected(&target_sphere[i])){
